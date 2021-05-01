@@ -48,7 +48,10 @@ api = REST(ALPACA_API_KEY, ALPACA_SECRET_KEY, api_version="v2")
 
 bars = api.get_bars_iter("AAPL", TimeFrame.Minute, "2021-02-08", "2021-02-08", limit=120, adjustment="raw")
 for i in bars:
-    print(i)
+    print(i.c)
+
+
+
 
 
 
@@ -72,6 +75,36 @@ def plot_results_multiple(predicted_data, true_data, prediction_len):
         plt.plot(padding + data, label='Prediction')
         plt.legend()
     plt.show()
+
+def load_data_alpaca(seq_len, fromdate, todate, normalise_window):
+
+    f = api.get_bars_iter("AAPL", TimeFrame.Minute, "2021-02-08", "2021-02-08", limit=300, adjustment="raw")
+    data = []
+    for i in f:
+        data.append(i.c)
+
+    sequence_length = seq_len + 1
+    result = []
+    for index in range(len(data) - sequence_length):
+        result.append(data[index: index + sequence_length])
+    
+    if normalise_window:
+        result = normalise_windows(result)
+
+    result = np.array(result)
+
+    row = round(0.9 * result.shape[0])
+    train = result[:int(row), :]
+    np.random.shuffle(train)
+    x_train = train[:, :-1]
+    y_train = train[:, -1]
+    x_test = result[int(row):, :-1]
+    y_test = result[int(row):, -1]
+
+    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+    x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))  
+
+    return [x_train, y_train, x_test, y_test]
 
 def load_data(filename, seq_len, normalise_window):
     f = open(filename, 'r').read()
@@ -158,3 +191,7 @@ def predict_sequences_multiple(model, data, window_size, prediction_len):
             curr_frame = np.insert(curr_frame, [window_size-1], predicted[-1], axis=0)
         prediction_seqs.append(predicted)
     return prediction_seqs
+
+
+data = load_data_alpaca(50, '', '', True)
+print(data)
